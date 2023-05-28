@@ -1,0 +1,12 @@
+# Ignore Java binaries
+*.class
+*.jar
+
+# Ignore secret files (certs, etc.)
+secrets/
+
+# Ignore log text files
+*.txt
+
+# Ignore VSC files
+.vscode/
