@@ -20,6 +20,8 @@ public class HttpReader {
     }
 
     private ReaderState state;
+    private String hostIdent;
+    private boolean hostOK;
     private boolean expectBody;
     private int expectedBodyLength;
     private HttpMimeType expectedContentType;
@@ -32,8 +34,10 @@ public class HttpReader {
     private ArrayList<HttpHeader> tempHeaders;
     private HttpContent tempContent;
 
-    public HttpReader(BufferedReader rawReader) {
+    public HttpReader(BufferedReader rawReader, String hostString) {
         state = ReaderState.READ_IDLE;
+        hostIdent = hostString;
+        hostOK = true;
         expectBody = false;
         expectedBodyLength = 0;
         expectedContentType = HttpMimeType.UNKNOWN;
@@ -62,6 +66,10 @@ public class HttpReader {
         tempHeading = null;
         tempHeaders.clear();
         tempContent = null;
+    }
+
+    public boolean isHostValid() {
+        return hostOK;
     }
 
     private ReaderState readHeading(String line) {
@@ -106,6 +114,8 @@ public class HttpReader {
         } else if (tempIdentifier.equalsIgnoreCase("content-type")) {
             expectBody = true;
             expectedContentType = mimeMap.get(tempValue);
+        } else if (tempIdentifier.equalsIgnoreCase("host")) {
+            hostOK = (tempValue.equals(hostIdent));
         }
 
         tempHeaders.add(new HttpHeader(tempIdentifier, tempValue));
@@ -142,14 +152,18 @@ public class HttpReader {
         while (state != ReaderState.READ_END) {
             tempLine = reader.readLine();
 
+            System.out.println(tempLine); // DEBUG!
+
             switch (state) {
                 case READ_IDLE:
                     state = ReaderState.READ_HEADING;
                     break;
                 case READ_HEADING:
+                    reader.skip(1);  // hacky precaution: skip extra '\n' after '\r'?
                     state = readHeading(tempLine);
                     break;
                 case READ_HEADER:
+                    reader.skip(1);
                     state = readHeader(tempLine);
                     break;
                 case READ_BODY:
