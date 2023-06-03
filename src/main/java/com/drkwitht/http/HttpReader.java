@@ -40,7 +40,7 @@ public class HttpReader {
         hostOK = true;
         expectBody = false;
         expectedBodyLength = 0;
-        expectedContentType = HttpMimeType.UNKNOWN;
+        expectedContentType = HttpMimeType.ANY;
 
         methodMap = new HashMap<>();
         for (String string : methodStrings) {
@@ -60,7 +60,7 @@ public class HttpReader {
         state = ReaderState.READ_IDLE;
         expectBody = false;
         expectedBodyLength = 0;
-        expectedContentType = HttpMimeType.UNKNOWN;
+        expectedContentType = HttpMimeType.ANY;
         
         reader.reset();
         tempHeading = null;
@@ -163,7 +163,7 @@ public class HttpReader {
                     state = readHeading(tempLine);
                     break;
                 case READ_HEADER:
-                    reader.skip(1);
+                    reader.skip(1);  // see prior comment above!
                     state = readHeader(tempLine);
                     break;
                 case READ_BODY:

@@ -27,7 +27,7 @@ public class StaticResource implements IStaticResource {
         else if (fileExtension.equalsIgnoreCase("json"))
             type = HttpMimeType.APPLICATION_JSON;
         else
-            type = HttpMimeType.UNKNOWN;
+            type = HttpMimeType.ANY;
 
         contentBytes = fileStream.readAllBytes();
 
@@ -38,7 +38,7 @@ public class StaticResource implements IStaticResource {
 
     @Override
     public HttpContent toWebContent() {
-        if (type == HttpMimeType.UNKNOWN)
+        if (type == HttpMimeType.ANY)
             return null;
 
         return new HttpContent(type, (int)contentSize, contentBytes);
