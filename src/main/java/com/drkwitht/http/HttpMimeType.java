@@ -13,5 +13,5 @@ public enum HttpMimeType {
     HTML_TXT,
     CSS_TXT,
     APPLICATION_JSON,  // NOTE: unused for now!
-    UNKNOWN            // NOTE: placeholder for bad MIME names.
+    ANY
 }

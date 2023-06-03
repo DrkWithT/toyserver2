@@ -41,6 +41,8 @@ public class MyHttpResponse {
     }
 
     public void writeBody(HttpContent bodyContent) throws IOException {
+        writeHeader(new HttpHeader("Content-Type", bodyContent.getMime()));
+        writeHeader(new HttpHeader("Content-Length", String.valueOf(bodyContent.getLength())));
         toClientStreamRef.writeBytes(HTTP_1_1_DELIM);
 
         if (bodyContent != null)

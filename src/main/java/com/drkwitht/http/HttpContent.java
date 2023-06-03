@@ -11,6 +11,7 @@ import java.util.Arrays;
  * @apiNote Encapsulates an HTTP/1.1 message's body data and its important properties such as MIME type and length.
  */
 public class HttpContent {
+    public static String[] MIME_NAMES = {"text/plain", "text/html", "text/css", "application/json", "*/*"};
     private HttpMimeType type;
     private int contentLength;
     private byte[] content;
@@ -21,7 +22,7 @@ public class HttpContent {
         content = Arrays.copyOf(data, contentLength);
     }
 
-    public HttpMimeType getMimeType() { return type; }
+    public String getMime() { return MIME_NAMES[type.ordinal()]; }
 
     public int getLength() { return contentLength; }
 
