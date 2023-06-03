@@ -8,7 +8,7 @@ import com.drkwitht.handlers.IRequestHandler;
  * @author Derek Tan (DrkWithT)
  * @summary This file contains driver code for my toy HTTP/1.1 server.
  * @version 0.1.0
- * TODO: possibly put flush calls for response stream? 
+ * TODO: possibly put flush calls for response streams in bound req handlers? 
  */
 
 import com.drkwitht.handlers.ResourceCache;
@@ -17,39 +17,28 @@ import com.drkwitht.http.HttpMethod;
 import com.drkwitht.http.HttpStatus;
 import com.drkwitht.types.ServerWorker;
 
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.KeyStore;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.logging.Logger;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
 
 public final class ToyServer2 {
     public static String SERVER_NAME = "ToyServer2/0.1";
 
-    private static final int DEFAULT_PORT = 5000;
-    private static final String DEFAULT_CONTENT_ROOT = "./public";
-    private static final String PKCS_STRING = "PKCS12";
-    private static final String PKCS_FILE_PATH = "secrets/localhost.p12"; // NOTE: change as you wish
-    private static final String PKCS_FILE_PWORD = "Derk23!";  // NOTE: change as you wish
+    private static final int DEFAULT_PORT = 8000;
+    private static final String DEFAULT_CONTENT_ROOT = "public";
 
     private boolean setupOK;
     private boolean isListening;
     private String hostName;
     private int portNumber;
-    private int sockBacklog; 
-    private SSLServerSocket gatewayServerSocket;
+    private int sockBacklog;
+    private ServerSocket gatewayServerSocket;
 
     private ResourceCache materialCache;
     private HandlerStorage handlerTable;
-    private Logger mainLogger;
 
     private final class GatewayWorker implements Runnable {
         
@@ -77,7 +66,7 @@ public final class ToyServer2 {
             try {
                 gatewayServerSocket.close();
             } catch (IOException ioError) {
-                System.err.println(ioError);
+                System.err.println("Socket close error: " + ioError);
             }
         }
     }
@@ -91,36 +80,7 @@ public final class ToyServer2 {
         materialCache = null;
         handlerTable = new HandlerStorage();
 
-        setupOK = setupCredentials(PKCS_FILE_PATH) && setupCache(DEFAULT_CONTENT_ROOT);
-        mainLogger = Logger.getLogger("ToyServer2");
-    }
-
-    private boolean setupCredentials(String pkcsFilePath) {
-        boolean statusOK = true;
-
-        try {
-            SSLContext serverSSLCtx = SSLContext.getInstance("TLSv1.3");
-            KeyManagerFactory keyFactory = KeyManagerFactory.getInstance("SunX509");
-            
-            // load pkcs12 file contents for (self-signed) certificate and keys... this must also be trusted manually in the browser!
-            KeyStore keyWrapper = KeyStore.getInstance(PKCS_STRING);
-            keyWrapper.load(new FileInputStream(pkcsFilePath), PKCS_FILE_PWORD.toCharArray());
-
-            // generate key list for key manager factory...
-            keyFactory.init(keyWrapper, PKCS_FILE_PWORD.toCharArray());
-
-            // initialize SSLContext for SSL server socket factory...
-            serverSSLCtx.init(keyFactory.getKeyManagers(), null, null);
-            
-            // initialize SSL socket for server usage... 
-            SSLServerSocketFactory socketFactory = serverSSLCtx.getServerSocketFactory();
-            gatewayServerSocket = (SSLServerSocket) socketFactory.createServerSocket(portNumber, sockBacklog);
-        } catch (Exception genericErr) {
-            statusOK = false;
-            mainLogger.warning("SSL socket error: " + genericErr);
-        }
-
-        return statusOK;
+        setupOK = setupCache(DEFAULT_CONTENT_ROOT) && setupSocket(portNumber, sockBacklog);
     }
 
     private boolean setupCache(String rootPath) {
@@ -128,9 +88,22 @@ public final class ToyServer2 {
 
         try {
             materialCache = new ResourceCache(rootPath);
-        } catch (Exception genericErr) {
+        } catch (Exception genericError) {
             statusOK = false;
-            mainLogger.warning("Cache setup error:" + genericErr);
+            System.err.println("Cache setup error:" + genericError);
+        }
+
+        return statusOK;
+    }
+
+    private boolean setupSocket(int port, int backlog) {
+        boolean statusOK = true;
+
+        try {
+            gatewayServerSocket = new ServerSocket(port, backlog);
+        } catch (Exception genericError) {
+            statusOK = false;
+            System.err.println("Socket setup error: " + genericError);            
         }
 
         return statusOK;
@@ -177,16 +150,14 @@ public final class ToyServer2 {
                 res.writeHeader(new HttpHeader("Server", SERVER_NAME));
 
                 res.writeBody(ctx.getResource("/index.html").toWebContent());
-                // res.flushData();
             } else {
-                res.writeHeading(HttpStatus.NO_CONTENT);
+                res.writeHeading(HttpStatus.NOT_IMPLEMENTED);
 
                 res.writeHeader(new HttpHeader("Connection", "Keep-Alive"));
                 res.writeHeader(new HttpHeader("Date", dateString));
                 res.writeHeader(new HttpHeader("Server", SERVER_NAME));
 
                 res.writeBody(null);
-                // res.flushData();
             }
         });
 
@@ -201,7 +172,6 @@ public final class ToyServer2 {
             res.writeHeader(new HttpHeader("Server", SERVER_NAME));
             
             res.writeBody(null);
-            // res.flushData();
         });
 
         /// Run and hope for the best!
