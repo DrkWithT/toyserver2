@@ -41,15 +41,20 @@ public class MyHttpResponse {
     }
 
     public void writeBody(HttpContent bodyContent) throws IOException {
-        writeHeader(new HttpHeader("Content-Type", bodyContent.getMime()));
-        writeHeader(new HttpHeader("Content-Length", String.valueOf(bodyContent.getLength())));
-        toClientStreamRef.writeBytes(HTTP_1_1_DELIM);
-
-        if (bodyContent != null)
+        if (bodyContent != null) {
+            writeHeader(new HttpHeader("Content-Type", bodyContent.getMime()));
+            writeHeader(new HttpHeader("Content-Length", String.valueOf(bodyContent.getLength())));
+            toClientStreamRef.writeBytes(HTTP_1_1_DELIM);
             toClientStreamRef.write(bodyContent.asBytes());
+        } else {
+            writeHeader(new HttpHeader("Content-Length", "0"));
+            toClientStreamRef.writeBytes(HTTP_1_1_DELIM);
+        }
+
+        flushData();  // NOTE: flush any unwritten response data to client so that repsonse is finished.
     }
 
-    public void flushData() throws IOException {
+    private void flushData() throws IOException {
         toClientStreamRef.flush();
     }
 }

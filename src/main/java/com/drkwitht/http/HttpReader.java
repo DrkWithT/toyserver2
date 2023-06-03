@@ -5,9 +5,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+/**
+ * HttpReader.java
+ * @author Derek Tan
+ * TODO: fix bad read of heading and headers in run()'s helpers!
+ */
+
 public class HttpReader {
     public final String[] methodStrings = {"HEAD", "GET", "POST", "UNKNOWN"};
-    public final String[] mimeStrings = {"PLAIN_TXT", "HTML_TXT", "CSS_TXT", "APPLICATION_JSON", "UNKNOWN"};
+    public final String[] mimeStrings = {"PLAIN_TXT", "HTML_TXT", "CSS_TXT", "APPLICATION_JSON", "ANY"};
 
     private enum ReaderState {
         READ_IDLE,
@@ -61,8 +67,6 @@ public class HttpReader {
         expectBody = false;
         expectedBodyLength = 0;
         expectedContentType = HttpMimeType.ANY;
-        
-        reader.reset();
         tempHeading = null;
         tempHeaders.clear();
         tempContent = null;
@@ -73,6 +77,10 @@ public class HttpReader {
     }
 
     private ReaderState readHeading(String line) {
+        if (line == null) {
+            return ReaderState.READ_ERROR;
+        }
+
         String[] tokens = line.split(" ");
 
         if (tokens.length != 3) {
@@ -93,39 +101,51 @@ public class HttpReader {
     }
 
     private ReaderState readHeader(String line) throws NumberFormatException {
+        if (line == null) {
+            return ReaderState.READ_ERROR;
+        }
+
         if (line.isEmpty()) {
             return ReaderState.READ_BODY;
         }
 
-        String[] lineHalves = line.split(":");
+        int colonIndex = line.indexOf(":");
+        String headerName = null;
+        String headerValue = null;
 
-        if (lineHalves.length != 2) {
+        if (colonIndex >= 1) {
+            headerName = line.substring(0, colonIndex).trim().toLowerCase();
+            headerValue = line.substring(colonIndex + 1).trim();
+        }
+
+        if (headerName == null || headerValue == null) {
             return ReaderState.READ_ERROR;
         }
 
-        String tempIdentifier = lineHalves[0].trim().toLowerCase();
-        String tempValue = lineHalves[1].trim();
-        int tempNumericValue = Integer.parseInt(tempValue);
+        int tempNumericValue = -1;
 
         // NOTE: check for content length and type headers
-        if (tempIdentifier.equalsIgnoreCase("content-length") && tempNumericValue > 0) {
+        if (headerName.equalsIgnoreCase("content-length") && tempNumericValue < 0) {
             expectBody = true;
+            tempNumericValue = Integer.parseInt(headerValue);
+
             expectedBodyLength = tempNumericValue;
-        } else if (tempIdentifier.equalsIgnoreCase("content-type")) {
+        } else if (headerName.equalsIgnoreCase("content-type")) {
             expectBody = true;
-            expectedContentType = mimeMap.get(tempValue);
-        } else if (tempIdentifier.equalsIgnoreCase("host")) {
-            hostOK = (tempValue.equals(hostIdent));
+            expectedContentType = mimeMap.get(headerValue);
+        } else if (headerName.equalsIgnoreCase("host")) {
+            hostOK = (headerValue.equalsIgnoreCase(hostIdent));
         }
 
-        tempHeaders.add(new HttpHeader(tempIdentifier, tempValue));
+        tempHeaders.add(new HttpHeader(headerName, headerValue));
 
         return ReaderState.READ_HEADER;
     }
 
     private ReaderState readBody() throws IOException {
+        // NOTE: Stop reader early when no body clues were found: no content-length, content-type... (Add transfer-encoding support later!) 
         if (!expectBody || expectedBodyLength < 1) {
-            return ReaderState.READ_ERROR;
+            return ReaderState.READ_END;
         }
 
         byte[] rawBodyBuffer = new byte[expectedBodyLength];
@@ -150,24 +170,24 @@ public class HttpReader {
         String tempLine = null;
 
         while (state != ReaderState.READ_END) {
-            tempLine = reader.readLine();
-
-            System.out.println(tempLine); // DEBUG!
+            System.out.println("HttpReader.state = " + state);  // DEBUG!
 
             switch (state) {
                 case READ_IDLE:
                     state = ReaderState.READ_HEADING;
                     break;
                 case READ_HEADING:
-                    reader.skip(1);  // hacky precaution: skip extra '\n' after '\r'?
+                    tempLine = reader.readLine();
                     state = readHeading(tempLine);
                     break;
                 case READ_HEADER:
-                    reader.skip(1);  // see prior comment above!
+                    tempLine = reader.readLine();
                     state = readHeader(tempLine);
                     break;
                 case READ_BODY:
                     state = readBody();
+                    break;
+                case READ_END:
                     break;
                 case READ_ERROR:
                 default:
