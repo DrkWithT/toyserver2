@@ -5,7 +5,6 @@ import java.util.Arrays;
 /**
  * HttpContent.java
  * @author Derek Tan (DrkWithT at GitHub)
- * TODO: 3b. Also, make a method to convert DocResource objects into HttpContent objects.
  */
 
 /**
