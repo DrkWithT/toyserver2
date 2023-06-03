@@ -13,22 +13,28 @@ public class StaticResource implements IStaticResource {
     private byte[] contentBytes;
     private long contentSize;
 
-    public StaticResource(String filePath) throws FileNotFoundException, IOException {
-        File fileObject = new File(filePath);
-        String fileExtension = fileObject.getName().split(".")[0].toLowerCase();
-        FileInputStream fileStream = new FileInputStream(fileObject);
+    public StaticResource(File file) throws FileNotFoundException, IOException {
+        String fileName = file.getName();
+        int dotIndex = fileName.lastIndexOf(".");
+        String fileExtension = "any";
 
-        if (fileExtension.equalsIgnoreCase("txt"))
+        if (dotIndex >= 0) {
+            fileExtension = fileName.substring(dotIndex + 1);
+        }
+
+        if (fileExtension.equalsIgnoreCase("txt")) {
             type = HttpMimeType.PLAIN_TXT;
-        else if (fileExtension.equalsIgnoreCase("html"))
+        } else if (fileExtension.equalsIgnoreCase("html")) {
             type = HttpMimeType.HTML_TXT;
-        else if (fileExtension.equalsIgnoreCase("css"))
+        } else if (fileExtension.equalsIgnoreCase("css")) {
             type = HttpMimeType.CSS_TXT;
-        else if (fileExtension.equalsIgnoreCase("json"))
+        } else if (fileExtension.equalsIgnoreCase("json")) {
             type = HttpMimeType.APPLICATION_JSON;
-        else
+        } else {
             type = HttpMimeType.ANY;
+        }
 
+        FileInputStream fileStream = new FileInputStream(file);
         contentBytes = fileStream.readAllBytes();
 
         fileStream.close();

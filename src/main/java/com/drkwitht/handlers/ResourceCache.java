@@ -9,15 +9,18 @@ public class ResourceCache {
 
     public ResourceCache(String rootFolderPath) throws Exception {
         resourceMap = new HashMap<String, StaticResource>();
-        File rootEntry = new File(rootFolderPath);
+        File rootEntry = new File(rootFolderPath).getAbsoluteFile();
+
+        if (!rootEntry.exists())
+            throw new Exception("ResourceCache: root path not valid.");
 
         if (!rootEntry.isDirectory())
             throw new Exception("ResourceCache: root path is not a folder.");
-        
-        File[] entries = rootEntry.listFiles();
 
-        for (File file : entries) {
-            resourceMap.put(file.getName(), new StaticResource(file.getAbsolutePath()));
+        File[] files = rootEntry.listFiles();
+
+        for (File file : files) {
+            resourceMap.put(file.getName(), new StaticResource(file));
         }
 
         size = resourceMap.size();
